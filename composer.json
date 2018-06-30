@@ -1,0 +1,19 @@
+{
+    "name": "morten/config-manager",
+    "description": "Config manager.",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Arthur Maurer",
+            "email": "arthimaurer@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0"
+    },
+    "autoload": {
+        "psr-0": {
+            "ConfigManager": "src/"
+        }
+    }
+}
