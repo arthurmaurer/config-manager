@@ -3,10 +3,6 @@ namespace ConfigManager;
 
 class ConfigManager
 {
-	const LOADERS = array(
-		"json" => __NAMESPACE__ ."\\JsonConfigLoader",
-	);
-
 	public $config = array();
 
 	public function __construct($path, $exceptionOnNotFound = true)
@@ -18,11 +14,12 @@ class ConfigManager
 	private function getLoader($path)
 	{
 		$ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+		$loaders = $this->getLoaders();
 
-		if (!array_key_exists($ext, self::LOADERS))
+		if (!array_key_exists($ext, $loaders))
 			throw new \Exception("No loaders for .$ext config files");
 
-		$className = self::LOADERS[$ext];
+		$className = $loaders[$ext];
 
 		return new $className;
 	}
@@ -63,4 +60,11 @@ class ConfigManager
 
 		return array($root, $rest);
 	}
+
+	protected function getLoaders()
+    {
+        return array(
+            "json" => __NAMESPACE__ ."\\JsonConfigLoader",
+        );
+    }
 }
