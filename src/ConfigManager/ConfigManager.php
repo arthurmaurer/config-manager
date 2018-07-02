@@ -1,5 +1,5 @@
 <?php
-namespace Framework\Config;
+namespace ConfigManager;
 
 class ConfigManager
 {
