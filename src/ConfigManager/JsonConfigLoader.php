@@ -1,10 +1,10 @@
 <?php
-namespace ConfigManager;
+namespace Framework\Config;
 
 class JsonConfigLoader extends ConfigLoader
 {
 	public function parse($content)
 	{
-		return json_decode($content, true);
+		return json_decode($content, false);
 	}
 }

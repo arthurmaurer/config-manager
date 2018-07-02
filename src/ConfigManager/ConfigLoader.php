@@ -1,5 +1,5 @@
 <?php
-namespace ConfigManager;
+namespace Framework\Config;
 
 abstract class ConfigLoader
 {

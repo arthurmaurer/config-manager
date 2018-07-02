@@ -1,8 +1,12 @@
 <?php
-namespace ConfigManager;
+namespace Framework\Config;
 
 class ConfigManager
 {
+	const LOADERS = array(
+		"json" => __NAMESPACE__ .'\\JsonConfigLoader',
+	);
+
 	public $config = array();
 
 	public function __construct($path, $exceptionOnNotFound = true)
@@ -14,33 +18,43 @@ class ConfigManager
 	private function getLoader($path)
 	{
 		$ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-		$loaders = $this->getLoaders();
 
-		if (!array_key_exists($ext, $loaders))
+		if (!array_key_exists($ext, self::LOADERS))
 			throw new \Exception("No loaders for .$ext config files");
 
-		$className = $loaders[$ext];
+		$className = self::LOADERS[$ext];
 
 		return new $className;
 	}
 
-	public function get($keyChain, $default = null)
-	{
-		return $this->internGet($keyChain, $this->config, $default);
-	}
+    public function get($keyChain = null, $default = null)
+    {
+        if ($keyChain === null)
+            return $this->config;
 
-	public function internGet($keyChain, array $data, $default)
+        return $this->internGet($keyChain, $this->config, $default);
+    }
+
+    public function getAssoc($keyChain, $default = null)
+    {
+        $result = $this->internGet($keyChain, $this->config, $default);
+        $result = $this->castObjectToArray($result);
+
+        return $result;
+    }
+
+	public function internGet($keyChain, \StdClass $data, $default)
 	{
 		list($root, $rest) = $this->splitKeyChain($keyChain);
 
-		if (!isset($data[$root]))
+		if (!isset($data->{$root}))
 			return $default;
 
-		$value = $data[$root];
+		$value = $data->{$root};
 
 		if ($rest)
 		{
-			if (is_array($value))
+			if (is_object($value))
 				return $this->internGet($rest, $value, $default);
 
 			return $default;
@@ -61,10 +75,20 @@ class ConfigManager
 		return array($root, $rest);
 	}
 
-	protected function getLoaders()
+    private function castObjectToArray($obj)
     {
-        return array(
-            "json" => __NAMESPACE__ ."\\JsonConfigLoader",
-        );
+        if (is_object($obj))
+            $obj = (array)$obj;
+
+        if (is_array($obj))
+        {
+            $new = array();
+
+            foreach ($obj as $key => $val)
+                $new[$key] = $this->castObjectToArray($val);
+        }
+            else $new = $obj;
+
+        return $new;
     }
 }
