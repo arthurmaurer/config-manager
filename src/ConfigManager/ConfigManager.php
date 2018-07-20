@@ -4,16 +4,26 @@ namespace ConfigManager;
 class ConfigManager
 {
 	const LOADERS = array(
-		"json" => __NAMESPACE__ .'\\JsonConfigLoader',
+		"json" => __NAMESPACE__ ."\\JsonConfigLoader",
 	);
 
 	public $config = array();
 
 	public function __construct($path, $exceptionOnNotFound = true)
 	{
-		$loader = $this->getLoader($path);
-		$this->config = $loader->load($path, $exceptionOnNotFound);
+		$this->config = $this->loadConfig($path, $exceptionOnNotFound);
 	}
+
+	private function loadConfig($path, $exceptionOnNotFound)
+    {
+        if (is_array($path))
+            return $this->castArrayToObject($path);
+        else if (is_object($path))
+            return $path;
+
+        $loader = $this->getLoader($path);
+        return $loader->load($path, $exceptionOnNotFound);
+    }
 
 	private function getLoader($path)
 	{
@@ -26,6 +36,16 @@ class ConfigManager
 
 		return new $className;
 	}
+
+	public function mergeConfig($path, $exceptionOnNotFound = true)
+    {
+        $newConfig = $this->loadConfig($path, $exceptionOnNotFound);
+        $newConfig = $this->castObjectToArray($newConfig);
+        $config = $this->castObjectToArray($this->config);
+        $config = array_replace_recursive($config, $newConfig);
+
+        $this->config = $this->castArrayToObject($config);
+    }
 
     public function get($keyChain = null, $default = null)
     {
@@ -90,5 +110,37 @@ class ConfigManager
             else $new = $obj;
 
         return $new;
+    }
+
+    private function castArrayToObject($value)
+    {
+        if ($this->isAssocArray($value))
+        {
+            $out = new \StdClass;
+
+            foreach ($value as $key => $val)
+                $out->$key = $this->castArrayToObject($val);
+
+            return $out;
+        }
+        else if (is_array($value))
+        {
+            $out = array();
+
+            foreach ($value as $key => $val)
+                $out[$key] = $this->castArrayToObject($val);
+
+            return $out;
+        }
+        else
+            return $value;
+    }
+
+    private function isAssocArray($array)
+    {
+        if (!is_array($array) || array() === $array)
+            return false;
+
+        return (array_keys($array) !== range(0, count($array) - 1));
     }
 }
