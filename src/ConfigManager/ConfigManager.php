@@ -17,12 +17,12 @@ class ConfigManager
 	private function loadConfig($path, $exceptionOnNotFound)
     {
         if (is_array($path))
-            return $this->castArrayToObject($path);
-        else if (is_object($path))
             return $path;
+        else if (is_object($path))
+            return $this->castObjectToArray($path);
 
         $loader = $this->getLoader($path);
-        
+
         return $loader->load($path, $exceptionOnNotFound);
     }
 
