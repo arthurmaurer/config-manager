@@ -22,6 +22,7 @@ class ConfigManager
             return $path;
 
         $loader = $this->getLoader($path);
+        
         return $loader->load($path, $exceptionOnNotFound);
     }
 
@@ -40,41 +41,39 @@ class ConfigManager
 	public function mergeConfig($path, $exceptionOnNotFound = true)
     {
         $newConfig = $this->loadConfig($path, $exceptionOnNotFound);
-        $newConfig = $this->castObjectToArray($newConfig);
-        $config = $this->castObjectToArray($this->config);
-        $config = array_replace_recursive($config, $newConfig);
-
-        $this->config = $this->castArrayToObject($config);
+        $this->config = array_replace_recursive($this->config, $newConfig);
     }
 
     public function get($keyChain = null, $default = null)
     {
+        $value = $this->getAssoc($keyChain, $default);
+        $value = $this->castArrayToObject($value);
+
+        return $value;
+    }
+
+    public function getAssoc($keyChain = null, $default = null)
+    {
         if ($keyChain === null)
             return $this->config;
 
-        return $this->internGet($keyChain, $this->config, $default);
+        $value = $this->internGet($keyChain, $this->config, $default);
+
+        return $value;
     }
 
-    public function getAssoc($keyChain, $default = null)
-    {
-        $result = $this->internGet($keyChain, $this->config, $default);
-        $result = $this->castObjectToArray($result);
-
-        return $result;
-    }
-
-	public function internGet($keyChain, \StdClass $data, $default)
+	public function internGet($keyChain, array $data, $default)
 	{
 		list($root, $rest) = $this->splitKeyChain($keyChain);
 
-		if (!isset($data->{$root}))
+		if (!isset($data[$root]))
 			return $default;
 
-		$value = $data->{$root};
+		$value = $data[$root];
 
 		if ($rest)
 		{
-			if (is_object($value))
+			if (is_array($value))
 				return $this->internGet($rest, $value, $default);
 
 			return $default;
@@ -138,7 +137,7 @@ class ConfigManager
 
     private function isAssocArray($array)
     {
-        if (!is_array($array) || array() === $array)
+        if (!is_array($array) || count($array) === 0)
             return false;
 
         return (array_keys($array) !== range(0, count($array) - 1));
