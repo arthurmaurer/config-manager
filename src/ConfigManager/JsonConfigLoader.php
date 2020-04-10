@@ -7,4 +7,9 @@ class JsonConfigLoader extends ConfigLoader
 	{
 		return json_decode($content, true);
 	}
+
+	public function serialize($data): string
+    {
+        return json_encode($data, JSON_PRETTY_PRINT);
+    }
 }

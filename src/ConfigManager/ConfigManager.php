@@ -1,6 +1,8 @@
 <?php
 namespace ConfigManager;
 
+use ConfigManager\Exception\NoLoaderException;
+
 class ConfigManager
 {
 	const LOADERS = array(
@@ -9,12 +11,15 @@ class ConfigManager
 
 	public $config = array();
 
+	protected $mainFilePath;
+
 	public function __construct($path, $exceptionOnNotFound = true)
 	{
+	    $this->mainFilePath = $path;
 		$this->config = $this->loadConfig($path, $exceptionOnNotFound);
 	}
 
-	private function loadConfig($path, $exceptionOnNotFound)
+	protected function loadConfig($path, $exceptionOnNotFound)
     {
         if (is_array($path))
             return $path;
@@ -26,12 +31,12 @@ class ConfigManager
         return $loader->load($path, $exceptionOnNotFound);
     }
 
-	private function getLoader($path)
+	protected function getLoader($path)
 	{
 		$ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
 		if (!array_key_exists($ext, self::LOADERS))
-			throw new \Exception("No loaders for .$ext config files");
+			throw new NoLoaderException("No loader available for '.$ext' config files");
 
 		$className = self::LOADERS[$ext];
 
@@ -42,6 +47,45 @@ class ConfigManager
     {
         $newConfig = $this->loadConfig($path, $exceptionOnNotFound);
         $this->config = array_replace_recursive($this->config, $newConfig);
+    }
+
+    public function set(string $path, $value): void
+    {
+        $config = &$this->config;
+
+        while (true)
+        {
+            [$root, $path] = $this->splitPath($path);
+
+            if ($path)
+            {
+                if (!isset($config[$root]) || !is_array($config[$root]))
+                    $config[$root] = [];
+
+                $config = &$config[$root];
+            }
+            else
+            {
+                if ($root === "[]")
+                    $config[] = $value;
+                else
+                    $config[$root] = $value;
+
+                break ;
+            }
+        }
+    }
+
+    public function save(string $path = null): bool
+    {
+        if (!$path)
+            $path = $this->mainFilePath;
+
+        $loader = $this->getLoader($path);
+
+        $success = $loader->save($path, $this->config);
+
+        return $success;
     }
 
     public function get($keyChain = null, $default = null)
@@ -62,9 +106,9 @@ class ConfigManager
         return $value;
     }
 
-	public function internGet($keyChain, array $data, $default)
+	protected function internGet($keyChain, array $data, $default)
 	{
-		list($root, $rest) = $this->splitKeyChain($keyChain);
+		list($root, $rest) = $this->splitPath($keyChain);
 
 		if (!isset($data[$root]))
 			return $default;
@@ -82,19 +126,37 @@ class ConfigManager
 		return $value;
 	}
 
-	private function splitKeyChain($keyChain)
+	protected function splitPath($path)
 	{
-		$root = strstr($keyChain, ".", true);
+        $length = mb_strlen($path);
+        $root = "";
+        $i = 0;
+        $prevWasSeparator = false;
 
-		if (!$root)
-			$root = $keyChain;
+        for ($i = 0; $i < $length; ++$i)
+        {
+            $c = $path[$i];
 
-		$rest = substr($keyChain, strlen($root) + 1);
+            if ($c === ".")
+            {
+                if ($i + 1 < $length && $path[$i + 1] === ".")
+                    ++$i;
+                else
+                    break ;
+            }
 
-		return array($root, $rest);
+            $root .= $c;
+        }
+
+        $rest = substr($path, $i + 1);
+
+        if (!$rest)
+            $rest = null;
+
+        return [$root, $rest];
 	}
 
-    private function castObjectToArray($obj)
+    protected function castObjectToArray($obj)
     {
         if (is_object($obj))
             $obj = (array)$obj;
@@ -111,7 +173,7 @@ class ConfigManager
         return $new;
     }
 
-    private function castArrayToObject($value)
+    protected function castArrayToObject($value)
     {
         if ($this->isAssocArray($value))
         {
@@ -135,7 +197,7 @@ class ConfigManager
             return $value;
     }
 
-    private function isAssocArray($array)
+    protected function isAssocArray($array)
     {
         if (!is_array($array) || count($array) === 0)
             return false;

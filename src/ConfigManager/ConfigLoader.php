@@ -3,7 +3,8 @@ namespace ConfigManager;
 
 abstract class ConfigLoader
 {
-	public abstract function parse($content);
+	abstract public function parse($content);
+	abstract public function serialize($data): string;
 
 	public function load($path, $exceptionOnNotFound)
 	{
@@ -35,4 +36,12 @@ abstract class ConfigLoader
 
 		return $content;
 	}
+
+	public function save(string $filePath, $data): bool
+    {
+        $serializedData = $this->serialize($data);
+        $success = file_put_contents($filePath, $serializedData);
+
+        return ($success !== false);
+    }
 }
